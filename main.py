@@ -30,9 +30,9 @@ async def read_root():
 
 @app.post("/create", status_code=status.HTTP_201_CREATED)
 async def create_url(entry: URLEntry):
-    if helper.validCode(entry['url_code']):
+    if helper.validCode(entry.url_code):
         raise HTTPException(status_code=400, detail="Invalid URL code")
-    entry['url']=helper.formatURL(entry['url'])
+    entry.url=helper.formatURL(entry.url)
     try:
         await app.URLMap.insert_one(entry.model_dump())
         return {"message": "URL created", "data": entry.model_dump()}
