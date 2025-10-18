@@ -37,7 +37,13 @@ async def create_url(entry: URLEntry):
 
 @app.get("/{url_code}")
 async def redirect_to_url(url_code: str):
+    url_sub=''
+    if '/' in url_code:
+        index=url_code.find('/')
+        url_sub=url_code[index:]
+        url_code=url_code[:index]
+
     entry = await app.URLMap.find_one({"url_code": url_code})
     if entry:
-        return RedirectResponse(url=entry["url"])
+        return RedirectResponse(url=entry["url"]+url_sub)
     raise HTTPException(status_code=404, detail="Short URL not found")
