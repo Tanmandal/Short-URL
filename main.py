@@ -30,7 +30,7 @@ async def read_root():
 
 @app.post("/create", status_code=status.HTTP_201_CREATED)
 async def create_url(entry: URLEntry):
-    if helper.validCode(entry.url_code):
+    if not helper.validCode(entry.url_code):
         raise HTTPException(status_code=400, detail="Invalid URL code")
     entry.url=helper.formatURL(entry.url)
     try:
