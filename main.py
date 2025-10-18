@@ -35,7 +35,7 @@ async def create_url(entry: URLEntry):
     except DuplicateKeyError:
         raise HTTPException(status_code=409, detail="URL code already exists")
 
-@app.get("/{url_code}")
+@app.get("/{url_code:path}")
 async def redirect_to_url(url_code: str):
     url_sub=''
     if '/' in url_code:
