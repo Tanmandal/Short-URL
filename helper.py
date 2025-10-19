@@ -1,6 +1,6 @@
 import re
 def validCode(url_code: str) -> bool:
-    key_words=['create','login','delete','pause','resume','details']
+    key_words=['create','login','delete','pause','resume','details','refresh_token']
     if url_code in key_words:
         return False
     pattern = r'^[A-Za-z0-9_-]{3,20}$'

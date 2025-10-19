@@ -152,6 +152,17 @@ async def details(credentials:HTTPAuthorizationCredentials=Depends(security)):
         raise HTTPException(status_code=404, detail="URL not found")
     
 
+@app.get("/refresh_token")
+async def refresh_token(credentials:HTTPAuthorizationCredentials=Depends(security)):
+    url_code=await authenticate(credentials)
+    entry = await app.URLMap.find_one({"url_code": url_code})
+    if entry and len(entry.get("url_pass"))>0:
+        access_token = create_access_token(data={"url_id": str(entry["_id"])})
+        return {"access_token":access_token, "token_type":"bearer"}
+    else:
+        raise HTTPException(status_code=404, detail="Invalid or expired token")
+    
+
 @app.get("/{url_code:path}")
 async def redirect_to_url(url_code: str,background_tasks: BackgroundTasks):
     url_sub=''
