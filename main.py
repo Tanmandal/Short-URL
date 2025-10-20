@@ -135,6 +135,26 @@ async def resume(credentials:HTTPAuthorizationCredentials=Depends(security)):
         return {"message": f"{url_code} successfully resumed"}
     else:
         raise HTTPException(status_code=404, detail="URL not found")
+
+@app.patch("/reset_hits")
+async def reset_hits(credentials:HTTPAuthorizationCredentials=Depends(security)):
+    url_code=await authenticate(credentials)
+    entry = await app.URLStats.find_one({"url_code": url_code})
+    if entry:
+        await app.URLStats.update_one({"url_code": url_code},{"$set": {"url_hits": 0}})
+        return {"message": f"{url_code} hits reset successfully"}
+    else:
+        raise HTTPException(status_code=404, detail="URL not found")
+
+@app.patch("/change_url")
+async def change_url(url:str,credentials:HTTPAuthorizationCredentials=Depends(security)):
+    url_code=await authenticate(credentials)
+    entry = await app.URLMap.find_one({"url_code": url_code})
+    if entry:
+        await app.URLMap.update_one({"url_code": url_code},{"$set": {"url": helper.formatURL(url)}})
+        return {"message": f"{url_code} redirect url changed successfully"}
+    else:
+        raise HTTPException(status_code=404, detail="URL not found")
     
 @app.get("/details")
 async def details(credentials:HTTPAuthorizationCredentials=Depends(security)):
