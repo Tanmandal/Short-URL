@@ -1,7 +1,6 @@
 from fastapi import FastAPI, HTTPException, status, BackgroundTasks, Depends
 from fastapi.responses import RedirectResponse
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from pydantic import BaseModel
 from motor.motor_asyncio import AsyncIOMotorClient
 from pymongo.errors import DuplicateKeyError
 from contextlib import asynccontextmanager
@@ -11,30 +10,9 @@ import os
 import helper
 from auth_utils import hash_password , create_access_token ,verify_password ,decode_access_token
 from datetime import datetime
+from models import *
 
 MONGO_URI = os.getenv("MONGO_URI")
-
-class URLEntry(BaseModel):
-    url_code: str
-    url_pass: str=""
-    url: str
-
-class URLStats(BaseModel):
-    url_code: str
-    url_hits: int
-    url_created_at: datetime
-    url_state: bool
-    
-
-class LoginEntry(BaseModel):
-    url_code: str
-    url_pass: str 
-
-class ResetEntry(BaseModel):
-    url_code: str
-    old_url_pass: str 
-    new_url_pass: str
-
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -47,9 +25,9 @@ async def lifespan(app: FastAPI):
     yield
     app.mongodb_client.close()
 
-app = FastAPI(lifespan=lifespan)
-security = HTTPBearer()
 
+security = HTTPBearer()
+app = FastAPI(lifespan=lifespan)
 
 def delay(sec:int):
     import time
