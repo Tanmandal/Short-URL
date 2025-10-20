@@ -30,6 +30,12 @@ class LoginEntry(BaseModel):
     url_code: str
     url_pass: str 
 
+class ResetEntry(BaseModel):
+    url_code: str
+    old_url_pass: str 
+    new_url_pass: str
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     app.mongodb_client = AsyncIOMotorClient(MONGO_URI)
@@ -98,11 +104,25 @@ async def create_url(entry: URLEntry):
 @app.post("/login")
 async def login(login_entry:LoginEntry):
     entry = await app.URLMap.find_one({"url_code": login_entry.url_code})
-    if entry and verify_password(login_entry.url_pass,entry.get("url_pass")):
+    if entry and len(entry['url_pass'])==0:
+        raise HTTPException(status_code=400, detail="Invalid request")
+    elif entry and verify_password(login_entry.url_pass,entry.get("url_pass")):
         access_token = create_access_token(data={"url_id": str(entry["_id"])})
         return {"access_token":access_token, "token_type":"bearer"}
-    elif entry and len(entry['url_pass'])==0:
-        raise HTTPException(status_code=400, detail="Invalid request")
+    else:
+        raise HTTPException(status_code=401, detail="Invalid credentials")
+    
+@app.post("/change_password")
+async def change_password(reset_entry:ResetEntry,credentials:HTTPAuthorizationCredentials=Depends(security)):
+    url_code=await authenticate(credentials)
+    if reset_entry.old_url_pass==reset_entry.new_url_pass:
+        raise HTTPException(status_code=400, detail="New password can't be same as old password")
+    if url_code != reset_entry.url_code:
+        raise HTTPException(status_code=401, detail="Invalid credentials")
+    entry = await app.URLMap.find_one({"url_code": url_code})
+    if entry and verify_password(reset_entry.old_url_pass,entry.get("url_pass")):
+        await app.URLMap.update_one({"url_code": url_code},{"$set": {"url_pass": hash_password(reset_entry.new_url_pass)}})
+        return {"message": f"{url_code} password successfully changed"}
     else:
         raise HTTPException(status_code=401, detail="Invalid credentials")
 
