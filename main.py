@@ -112,19 +112,7 @@ async def login(login_entry:LoginEntry):
     else:
         raise HTTPException(status_code=401, detail="Invalid credentials")
     
-@app.post("/change_password")
-async def change_password(reset_entry:ResetEntry,credentials:HTTPAuthorizationCredentials=Depends(security)):
-    url_code=await authenticate(credentials)
-    if reset_entry.old_url_pass==reset_entry.new_url_pass:
-        raise HTTPException(status_code=400, detail="New password can't be same as old password")
-    if url_code != reset_entry.url_code:
-        raise HTTPException(status_code=401, detail="Invalid credentials")
-    entry = await app.URLMap.find_one({"url_code": url_code})
-    if entry and verify_password(reset_entry.old_url_pass,entry.get("url_pass")):
-        await app.URLMap.update_one({"url_code": url_code},{"$set": {"url_pass": hash_password(reset_entry.new_url_pass)}})
-        return {"message": f"{url_code} password successfully changed"}
-    else:
-        raise HTTPException(status_code=401, detail="Invalid credentials")
+
 
 @app.delete("/delete")
 async def delete(credentials:HTTPAuthorizationCredentials=Depends(security)):
