@@ -1,6 +1,7 @@
 from fastapi import FastAPI, HTTPException, status, BackgroundTasks, Depends
 from fastapi.responses import RedirectResponse
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from fastapi.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
 from pymongo.errors import DuplicateKeyError
 from contextlib import asynccontextmanager
@@ -28,6 +29,18 @@ async def lifespan(app: FastAPI):
 
 security = HTTPBearer()
 app = FastAPI(lifespan=lifespan)
+
+
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=os.getenv("ALLOWED_ORIGINS", ""),  # specify frontend domains
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
 
 def delay(sec:int):
     import time
