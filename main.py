@@ -30,8 +30,6 @@ async def lifespan(app: FastAPI):
 security = HTTPBearer()
 app = FastAPI(lifespan=lifespan)
 
-
-
 app.add_middleware(
     CORSMiddleware,
     allow_origins=os.getenv("ALLOWED_ORIGINS", ""),  # specify frontend domains
@@ -39,8 +37,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-
 
 def delay(sec:int):
     import time
