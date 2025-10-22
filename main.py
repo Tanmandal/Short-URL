@@ -14,6 +14,8 @@ from datetime import datetime
 from models import *
 
 MONGO_URI = os.getenv("MONGO_URI")
+URL_BLACKLIST=helper.listENV(os.getenv("URL_BLACKLIST"))
+SURL_BASE= os.getenv("SURL_BASE")
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -32,7 +34,7 @@ app = FastAPI(lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=os.getenv("ALLOWED_ORIGINS", ""),  # specify frontend domains
+    allow_origins=helper.listENV(os.getenv("ALLOWED_ORIGINS", "*")),
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -73,8 +75,12 @@ async def read_root():
 
 @app.post("/create", status_code=status.HTTP_201_CREATED)
 async def create_url(entry: URLEntry):
+    if helper.blackURL(entry.url,URL_BLACKLIST):
+        raise HTTPException(status_code=400, detail="URL Blacklisted")
     if not helper.validCode(entry.url_code):
         raise HTTPException(status_code=400, detail="Invalid URL code")
+    if not helper.validPass(entry.url_pass):
+        raise HTTPException(status_code=400, detail="Password length must be 3..20")
     entry.url=helper.formatURL(entry.url)
     entry.url_pass=hash_password(entry.url_pass)
     #entry.created_at=datetime.utcnow()
@@ -82,7 +88,7 @@ async def create_url(entry: URLEntry):
         await app.URLMap.insert_one(entry.model_dump())
         if len(entry.url)>0:
             await app.URLStats.insert_one({"url_code":entry.url_code,"url_hits":0,"url_created_at":datetime.utcnow(),"url_state":True})
-        return {"message": "URL created", "data": entry.url}
+        return {"message": "URL created", "short_url": SURL_BASE+"/"+entry.url_code}
     except DuplicateKeyError:
         raise HTTPException(status_code=409, detail="URL code already exists")
 
@@ -102,10 +108,15 @@ async def login(login_entry:LoginEntry):
 @app.post("/change_password")
 async def change_password(reset_entry:ResetEntry,credentials:HTTPAuthorizationCredentials=Depends(security)):
     url_code=await authenticate(credentials)
-    if reset_entry.old_url_pass==reset_entry.new_url_pass:
-        raise HTTPException(status_code=400, detail="New password can't be same as old password")
     if url_code != reset_entry.url_code:
         raise HTTPException(status_code=401, detail="Invalid credentials")
+    
+    if reset_entry.old_url_pass==reset_entry.new_url_pass:
+        raise HTTPException(status_code=400, detail="New password can't be same as old password")
+    
+    if helper.validPass(reset_entry.new_url_pass):
+        raise HTTPException(status_code=400, detail="Password length must be 3..20")
+    
     entry = await app.URLMap.find_one({"url_code": url_code})
     if entry and verify_password(reset_entry.old_url_pass,entry.get("url_pass")):
         await app.URLMap.update_one({"url_code": url_code},{"$set": {"url_pass": hash_password(reset_entry.new_url_pass)}})
@@ -160,6 +171,8 @@ async def change_url(url:str,credentials:HTTPAuthorizationCredentials=Depends(se
     url_code=await authenticate(credentials)
     entry = await app.URLMap.find_one({"url_code": url_code})
     if entry:
+        if helper.blackURL(url,URL_BLACKLIST):
+            raise HTTPException(status_code=400, detail="URL Blacklisted")
         await app.URLMap.update_one({"url_code": url_code},{"$set": {"url": helper.formatURL(url)}})
         return {"message": f"{url_code} redirect url changed successfully"}
     else:
@@ -178,6 +191,15 @@ async def details(credentials:HTTPAuthorizationCredentials=Depends(security)):
     else:
         raise HTTPException(status_code=404, detail="URL not found")
     
+@app.get("/validate_token")
+async def validate_token(credentials:HTTPAuthorizationCredentials=Depends(security)):
+    url_code=await authenticate(credentials)
+    entry1 = await app.URLStats.find_one({"url_code": url_code})
+    if entry1:
+        return {"message": "Access token is Valid"}
+    else:
+        raise HTTPException(status_code=404, detail="Access token not Valid")
+    
 
 @app.get("/refresh_token")
 async def refresh_token(credentials:HTTPAuthorizationCredentials=Depends(security)):
@@ -188,7 +210,15 @@ async def refresh_token(credentials:HTTPAuthorizationCredentials=Depends(securit
         return {"access_token":access_token, "token_type":"bearer"}
     else:
         raise HTTPException(status_code=404, detail="Invalid or expired token")
-    
+
+
+@app.get("/health")
+async def health_check():
+    try:
+        await app.db.command("ping")
+        return {"message": "Database is active"}
+    except Exception as e:
+        raise HTTPException(status_code=404,detail= f"Database connection failed: {str(e)}")
 
 @app.get("/{url_code:path}")
 async def redirect_to_url(url_code: str,background_tasks: BackgroundTasks):
