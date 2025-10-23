@@ -114,7 +114,7 @@ async def change_password(reset_entry:ResetEntry,credentials:HTTPAuthorizationCr
     if reset_entry.old_url_pass==reset_entry.new_url_pass:
         raise HTTPException(status_code=400, detail="New password can't be same as old password")
     
-    if helper.validPass(reset_entry.new_url_pass):
+    if not helper.validPass(reset_entry.new_url_pass):
         raise HTTPException(status_code=400, detail="Password length must be 3..20")
     
     entry = await app.URLMap.find_one({"url_code": url_code})
