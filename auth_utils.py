@@ -5,7 +5,7 @@ from datetime import datetime, timedelta
 
 SECRET_KEY= os.getenv("SECRET_KEY")
 ALGORITHM= 'HS256'
-TOKEN_EXPIRE=30
+TOKEN_EXPIRE=int(os.getenv("TOKEN_EXPIRE", "5"))
 
 pwd_context = CryptContext(schemes=["pbkdf2_sha256"], deprecated="auto")
 
