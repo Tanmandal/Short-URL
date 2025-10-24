@@ -32,7 +32,7 @@ Clone the repository and install dependencies:
 
 ```bash
 git clone https://github.com/tanmandal/Short-URL.git
-cd url-shortener-api
+cd Short-URL
 pip install -r requirements.txt
 ````
 
