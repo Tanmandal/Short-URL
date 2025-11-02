@@ -73,6 +73,11 @@ async def authenticate(credentials:HTTPAuthorizationCredentials):
 async def read_root():
     return {"message": "Welcome to URL Shortener"}
 
+@app.get("/kaithhealthcheck")
+def kaith_healthcheck():
+    return {"ok": True}
+
+
 @app.post("/create", status_code=status.HTTP_201_CREATED)
 async def create_url(entry: URLEntry):
     if helper.blackURL(entry.url,URL_BLACKLIST):
